@@ -1,6 +1,25 @@
 version: "3.9"
 
 services:
+  redis: 
+   image: redis:latest 
+   restart: always 
+   ports: 
+    - "6379:6379"
+
+  worker: 
+    build: 
+      context: . 
+      dockerfile: Dockerfile.dev 
+    restart: always 
+    volumes:
+      - ./todo:/app/todo
+      - ./credentials:/root/.aws/credentials 
+    environment:
+      CELERY_BROKER_URL: sqs://
+      CELERY_RESULT_BACKEND: db+postgresql://administrator:verySecretPassword@database:5432/todo
+    command: poetry run celery --app todo.tasks.ical worker --loglevel=info
+
   database:
     image: postgres:latest
     restart: always
@@ -16,7 +35,10 @@ services:
     restart: always
     volumes:
       - ./todo:/app/todo
+      - ./credentials:/root/.aws/credentials 
     environment:
+      CELERY_BROKER_URL: sqs://
+      CELERY_RESULT_BACKEND: db+postgresql://administrator:verySecretPassword@database:5432/todo
       SQLALCHEMY_DATABASE_URI: postgresql://administrator:verySecretPassword@database:5432/todo
     ports:
       - "6400:6400"
